@@ -193,8 +193,23 @@ const INSPECT_STATUS = {
   trouble:  { label: "Troubleshoot", color: "#ef4444" }
 };
 
+/* Item pengecekan khusus per tipe mesin */
+const INSPECT_SPECIFIC = {
+  ahu: [
+    { key: "filter_g4", label: "Filter G4 (Pre-Filter AHU)" },
+    { key: "filter_f7", label: "Filter F7 (Bag / Medium Filter)" },
+    { key: "filter_f9", label: "Filter F9 (HEPA / Final Filter)" }
+  ],
+  pw: [
+    { key: "filter_cartridge", label: "Filter Cartridge (5 micron) PW" }
+  ]
+};
+
 function buildInspectionItems(machine) {
   const items = INSPECT_GENERAL.map((g) => ({ key: g.key, label: g.label, status: "ok", auto: "ok", note: "" }));
+  (INSPECT_SPECIFIC[machine.type] || []).forEach((s) => {
+    items.push({ key: "sp_" + s.key, label: s.label, status: "ok", auto: "ok", note: "" });
+  });
   const type = MACHINE_TYPES[machine.type];
   type.params.forEach((p) => {
     const v = currentParam(machine, p);
