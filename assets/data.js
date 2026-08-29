@@ -122,6 +122,14 @@ function genJam(param, machineId, jml) {
   return out;
 }
 
+function paramLevel(p, value) {
+  const range = Math.max(p.max - p.min, 1);
+  const oob = Math.abs(value - p.base) / range;
+  if (oob > 0.55) return "trouble";
+  if (oob > 0.35) return "abnormal";
+  return "ok";
+}
+
 function machineStatus(machine) {
   const flags = store.get("flags", {});
   if (flags[machine.id] === "maintenance") return "maintenance";
@@ -134,7 +142,10 @@ function machineStatus(machine) {
     else if (oob > 0.35) warn++;
   }
   if (bad > 0) return "alert";
+  const insp = latestInspection(machine);
+  if (insp && insp.hasTrouble && insp.ageDays <= 1) return "alert";
   if (warn > 0) return "warning";
+  if (insp && insp.hasAbnormal && insp.ageDays <= 2) return "warning";
   return "normal";
 }
 
@@ -161,4 +172,82 @@ function genParams(machine, param) {
   const drift = (rnd() - 0.5) * range * 0.18;
   const v = clamp(param.base + drift, param.min, param.max);
   return { value: round2(v) };
+}
+
+/* ============================================================
+   FORMULIR PENGECEKAN MESIN (OK / Abnormal / Troubleshoot)
+   ============================================================ */
+
+const INSPECT_GENERAL = [
+  { key: "kebersihan", label: "Kebersihan & kerapian area mesin" },
+  { key: "bocor",        label: "Kebocoran (air / oli / refrigeran)" },
+  { key: "suara",        label: "Suara / getaran tidak normal" },
+  { key: "listrik",      label: "Kabel & panel listrik aman" },
+  { key: "instrumen",    label: "Instrumen, indikator & alarm berfungsi" },
+  { key: "pelumasan",    label: "Level pelumasan / oli memadai" }
+];
+
+const INSPECT_STATUS = {
+  ok:       { label: "OK",          color: "#22c55e" },
+  abnormal: { label: "Abnormal",    color: "#f59e0b" },
+  trouble:  { label: "Troubleshoot", color: "#ef4444" }
+};
+
+function buildInspectionItems(machine) {
+  const items = INSPECT_GENERAL.map((g) => ({ key: g.key, label: g.label, status: "ok", auto: "ok", note: "" }));
+  const type = MACHINE_TYPES[machine.type];
+  type.params.forEach((p) => {
+    const v = currentParam(machine, p);
+    items.push({
+      key: "p_" + p.key,
+      label: p.label + " (" + v + " " + p.unit + ")",
+      status: paramLevel(p, v),
+      auto: paramLevel(p, v),
+      note: ""
+    });
+  });
+  return items;
+}
+
+function latestInspection(machine) {
+  const all = store.get("inspections", {});
+  const list = all[machine.id] || [];
+  if (!list.length) return null;
+  const rec = list[0];
+  const ageDays = (Date.now() - new Date(rec.ts).getTime()) / 86400000;
+  const items = rec.items || [];
+  const trouble = items.filter((i) => i.status === "trouble").length;
+  const abnormal = items.filter((i) => i.status === "abnormal").length;
+  return { rec, ageDays, hasTrouble: trouble > 0, hasAbnormal: abnormal > 0, trouble, abnormal, ok: items.length - trouble - abnormal };
+}
+
+function countInspection(items) {
+  const ok = items.filter((i) => i.status === "ok").length;
+  const abnormal = items.filter((i) => i.status === "abnormal").length;
+  const trouble = items.filter((i) => i.status === "trouble").length;
+  return { ok, abnormal, trouble };
+}
+
+function seedInspections() {
+  if (store.get("inspections", null)) return;
+  const out = {};
+  const base = new Date();
+  MACHINES.forEach((m, i) => {
+    const rnd = seeded(hashStr("ins:" + m.id + ":" + todayStr()));
+    const baseItems = buildInspectionItems(m);
+    const items = baseItems.map((it) => {
+      let status = it.auto;
+      if (status === "ok") {
+        const r = rnd();
+        if (r < 0.18) status = "trouble";
+        else if (r < 0.45) status = "abnormal";
+      }
+      return { key: it.key, label: it.label, status: status, note: status === "ok" ? "" : (status === "trouble" ? "Perlu penanganan segera" : "Perlu dimonitor") };
+    });
+    const d = new Date(base);
+    d.setDate(d.getDate() - (1 + (i % 3)));
+    d.setHours(8 + (i % 9), 20 + (i % 30), 0, 0);
+    out[m.id] = [{ ts: d.toISOString(), by: "Petugas " + (i + 1), items: items }];
+  });
+  store.set("inspections", out);
 }

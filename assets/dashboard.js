@@ -165,6 +165,8 @@ function renderLowStock() {
     ).join("") + "</tbody>";
 }
 
+seedInspections();
+
 function loadAll() {
   renderStats();
   renderAlerts();

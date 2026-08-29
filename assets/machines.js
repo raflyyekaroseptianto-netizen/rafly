@@ -89,6 +89,28 @@ function renderLog() {
   ).join("");
 }
 
+function renderInspection() {
+  const insp = latestInspection(machine);
+  const el = document.getElementById("inspCard");
+  if (!el) return;
+  if (!insp) {
+    el.innerHTML = '<span class="sub">Belum ada catatan pengecekan.</span>';
+    return;
+  }
+  const when = new Date(insp.rec.ts).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) + " " +
+    new Date(insp.rec.ts).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  const days = Math.max(0, Math.ceil(insp.ageDays));
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+    '<span class="badge ' + (insp.hasTrouble ? "alert" : insp.hasAbnormal ? "warning" : "normal") + '"><span class="dot"></span>' +
+    (insp.hasTrouble ? "Butuh tindakan" : insp.hasAbnormal ? "Perlu perhatian" : "Semua OK") + "</span>" +
+    '<span style="color:var(--muted);font-size:12px">' + esc(insp.rec.by) + " &middot; " + when + " &middot; " +
+    insp.ok + " OK / " + insp.abnormal + " Abnormal / " + insp.trouble + " Trouble" +
+    (days > 0 ? " &middot; " + days + " hari lalu" : " &middot; hari ini") + "</span>" +
+    '<a class="btn sm" style="margin-left:auto" href="inspection.html?id=' + machine.id + '">Buka Form Pengecekan</a>' +
+    "</div>";
+}
+
 function scoreHealth() {
   const type = MACHINE_TYPES[machine.type];
   let ok = 0, warn = 0, bad = 0;
@@ -209,9 +231,11 @@ function renderCharts() {
 }
 
 function loadMachine() {
+  seedInspections();
   renderTabs();
   renderHead();
   renderParams();
+  renderInspection();
   renderLog();
   renderCharts();
 }

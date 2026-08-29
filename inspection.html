@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard Monitoring Mesin</title>
+  <title>Form Pengecekan Mesin</title>
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
@@ -11,13 +11,10 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="logo">SM</div>
-        <div>
-          <b>MesinUp</b>
-          <small>Monitoring &amp; Sparepart</small>
-        </div>
+        <div><b>MesinUp</b><small>Monitoring &amp; Sparepart</small></div>
       </div>
       <nav class="nav">
-        <a href="index.html" class="active">
+        <a href="index.html">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
           Dashboard
         </a>
@@ -25,7 +22,7 @@
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>
           Mesin &amp; Grafik
         </a>
-        <a href="inspection.html">
+        <a href="inspection.html" class="active">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
           Pengecekan
         </a>
@@ -36,49 +33,53 @@
       </nav>
       <div class="foot">
         <b>Mode Demo</b><br />
-        Data merupakan simulasi. Pembacaan manual yang Anda tambahkan tersimpan di browser &amp; terlihat secara lokal.
+        Hasil pengecekan tersimpan di browser (localStorage) per perangkat pemakai.
       </div>
     </aside>
 
     <main class="main">
       <div class="topbar">
         <div>
-          <h1>Dashboard Monitoring Mesin</h1>
-          <p id="dt"></p>
+          <h1>Form Pengecekan Mesin</h1>
+          <p id="dt">Checklist harian &mdash; status OK, Abnormal, atau Troubleshoot</p>
         </div>
-        <span class="chip"><span class="dot"></span> Sistem pemantauan aktif</span>
+        <span class="chip"><span class="dot"></span> Checklist harian</span>
       </div>
 
-      <div id="alertBanner"></div>
+      <div id="machineTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px"></div>
 
-      <div class="grid stats" id="statsRow"></div>
-
-      <div style="height:8px"></div>
-
-      <div class="card mg">
-        <h3><span class="accent-line"></span> Status Mesin Saat Ini</h3>
-        <div class="grid cards" id="coGrid"></div>
+      <div class="detail-head">
+        <div>
+          <h1 id="mName"></h1>
+          <div class="loc" id="mLoc"></div>
+        </div>
+        <span id="mBadge"></span>
       </div>
 
-      <div class="grid cols-2">
+      <div class="grid cols-3-2">
         <div class="card">
-          <h3><span class="accent-line"></span> Distribusi Status Mesin</h3>
-          <div class="chart-box sm"><canvas id="statusChart"></canvas></div>
+          <h3><span class="accent-line"></span> Formulir Pengecekan</h3>
+          <div class="toolbar" style="align-items:end">
+            <div class="field" style="flex:1">
+              <label>Nama Petugas</label>
+              <input id="inspBy" placeholder="cth: Rafly" />
+            </div>
+            <label class="chk-line" style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);padding:10px 0;cursor:pointer">
+              <input type="checkbox" id="inspAutoMaint" checked style="width:16px;height:16px;accent-color:var(--accent)" />
+              Tandai maintenance otomatis bila ada Troubleshoot
+            </label>
+          </div>
+          <div id="checkList"></div>
+          <div class="legend" id="sumLive" style="margin-top:14px"></div>
+          <div class="actions" style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+            <button class="btn" onclick="resetForm()">Reset</button>
+            <button class="btn primary" onclick="saveInspection()">Simpan Hasil Pengecekan</button>
+          </div>
         </div>
-        <div class="card">
-          <h3><span class="accent-line"></span> Kinerja Chiller — Suhu Evaporator (14 hari)</h3>
-          <div class="chart-box sm"><canvas id="perfChart"></canvas></div>
-        </div>
-      </div>
 
-      <div class="grid cols-3-2" style="margin-top:16px">
         <div class="card">
-          <h3><span class="accent-line"></span> Daftar Mesin &amp; Parameter Utama</h3>
-          <div class="table-wrap"><table id="tblSkema"></table></div>
-        </div>
-        <div class="card">
-          <h3><span class="accent-line"></span> Low Stock Spare Parts</h3>
-          <div class="table-wrap"><table id="tblLow"></table></div>
+          <h3><span class="accent-line"></span> Riwayat Pengecekan</h3>
+          <div class="log-list" id="histList"></div>
         </div>
       </div>
     </main>
@@ -86,10 +87,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="assets/app.js"></script>
   <script src="assets/data.js"></script>
-  <script src="assets/spareparts-store.js"></script>
-  <script src="assets/dashboard.js"></script>
+  <script src="assets/inspection.js"></script>
 </body>
 </html>
