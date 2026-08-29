@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard Monitoring Mesin</title>
+  <title>Jadwal Preventive Maintenance</title>
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
@@ -11,13 +11,10 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="logo">SM</div>
-        <div>
-          <b>MesinUp</b>
-          <small>Monitoring &amp; Sparepart</small>
-        </div>
+        <div><b>MesinUp</b><small>Monitoring &amp; Sparepart</small></div>
       </div>
       <nav class="nav">
-        <a href="index.html" class="active">
+        <a href="index.html">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
           Dashboard
         </a>
@@ -29,7 +26,7 @@
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
           Pengecekan
         </a>
-        <a href="pm.html">
+        <a href="pm.html" class="active">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
           Jadwal PM
         </a>
@@ -40,65 +37,71 @@
       </nav>
       <div class="foot">
         <b>Mode Demo</b><br />
-        Data merupakan simulasi. Pembacaan manual yang Anda tambahkan tersimpan di browser &amp; terlihat secara lokal.
+        Jadwal &amp; riwayat tersimpan di browser per perangkat pemakai.
       </div>
     </aside>
 
     <main class="main">
       <div class="topbar">
         <div>
-          <h1>Dashboard Monitoring Mesin</h1>
-          <p id="dt"></p>
+          <h1>Jadwal Preventive Maintenance</h1>
+          <p>Perawatan terjadwal 1 bulan, 3 bulan, 6 bulan, dan 1 tahun per mesin</p>
         </div>
-        <span class="chip"><span class="dot"></span> Sistem pemantauan aktif</span>
+        <span class="chip"><span class="dot"></span> PM aktif</span>
       </div>
-
-      <div id="alertBanner"></div>
 
       <div class="grid stats" id="statsRow"></div>
 
       <div style="height:8px"></div>
 
-      <div class="card mg">
-        <h3><span class="accent-line"></span> Status Mesin Saat Ini</h3>
-        <div class="grid cards" id="coGrid"></div>
-      </div>
-
-      <div class="grid cols-2">
-        <div class="card">
-          <h3><span class="accent-line"></span> Distribusi Status Mesin</h3>
-          <div class="chart-box sm"><canvas id="statusChart"></canvas></div>
+      <div class="card">
+        <h3><span class="accent-line"></span> Daftar Tugas PM</h3>
+        <div class="toolbar">
+          <input class="search" id="qSearch" placeholder="Cari tugas PM..." oninput="renderTable()" />
+          <select id="qMachine" onchange="renderTable()" style="max-width:200px"></select>
+          <select id="qStatus" onchange="renderTable()" style="max-width:200px">
+            <option value="">Semua Status</option>
+            <option value="overdue">Overdue</option>
+            <option value="due">Jatuh Tempo (&le; 14 hari)</option>
+            <option value="ok">Terjadwal</option>
+          </select>
         </div>
-        <div class="card">
-          <h3><span class="accent-line"></span> Kinerja Chiller — Suhu Evaporator (14 hari)</h3>
-          <div class="chart-box sm"><canvas id="perfChart"></canvas></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="intervalChips"></div>
+        <div class="table-wrap">
+          <table id="tblPm"></table>
         </div>
-      </div>
-
-      <div class="grid cols-3-2" style="margin-top:16px">
-        <div class="card">
-          <h3><span class="accent-line"></span> Daftar Mesin &amp; Parameter Utama</h3>
-          <div class="table-wrap"><table id="tblSkema"></table></div>
-        </div>
-        <div class="card">
-          <h3><span class="accent-line"></span> Low Stock Spare Parts</h3>
-          <div class="table-wrap"><table id="tblLow"></table></div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:16px">
-        <h3><span class="accent-line"></span> Jadwal PM Terdekat (Overdue &amp; 14 hari) <a href="pm.html" style="margin-left:auto;color:var(--accent);font-size:12px;font-weight:600">Kelola Jadwal &rarr;</a></h3>
-        <div class="table-wrap"><table id="tblPmDue"></table></div>
       </div>
     </main>
   </div>
 
+  <div class="overlay" id="ovlDone">
+    <div class="modal">
+      <h3 id="dnTitle">Tandai Selesai PM</h3>
+      <p class="modal-sub" id="dnSub"></p>
+      <div class="field mg"><label>Nama Petugas</label><input id="dnBy" placeholder="cth: Rafly" /></div>
+      <div class="field mg"><label>Catatan / Hasil</label><textarea id="dnNote" rows="2" placeholder="cth: tidak ditemukan kelainan, komponen diganti..."></textarea></div>
+      <div class="actions">
+        <button class="btn" onclick="closeDone()">Batal</button>
+        <button class="btn primary" onclick="confirmDone()">Selesai &amp; Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovlHist">
+    <div class="modal wide">
+      <h3 id="htTitle">Riwayat PM</h3>
+      <p class="modal-sub" id="htSub"></p>
+      <div class="log-list" id="htList"></div>
+      <div class="actions">
+        <button class="btn" onclick="closeHist()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="assets/app.js"></script>
   <script src="assets/data.js"></script>
-  <script src="assets/spareparts-store.js"></script>
-  <script src="assets/dashboard.js"></script>
+  <script src="assets/pm.js"></script>
 </body>
 </html>

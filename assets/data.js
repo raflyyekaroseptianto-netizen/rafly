@@ -266,3 +266,145 @@ function seedInspections() {
   });
   store.set("inspections", out);
 }
+
+/* ============================================================
+   JADWAL PREVENTIVE MAINTENANCE (1, 3, 6, 12 bulan)
+   ============================================================ */
+
+const PM_INTERVALS = [
+  { val: 1,  label: "1 Bulan", shot: "1 bln" },
+  { val: 3,  label: "3 Bulan", shot: "3 bln" },
+  { val: 6,  label: "6 Bulan", shot: "6 bln" },
+  { val: 12, label: "1 Tahun", shot: "1 thn" }
+];
+
+const PM_TASKS = {
+  chiller: [
+    { interval: 1,  label: "Bersihkan kondensor & evaporator" },
+    { interval: 1,  label: "Cek level & tekanan refrigeran" },
+    { interval: 1,  label: "Cek arus kompresor & sambungan listrik" },
+    { interval: 3,  label: "Analisis oli kompresor" },
+    { interval: 3,  label: "Tes pressure switch & kontaktor" },
+    { interval: 6,  label: "Servis kompresor (vibrasi, megger, oli)" },
+    { interval: 6,  label: "Kalibrasi sensor suhu & tekanan" },
+    { interval: 12, label: "Overhaul kompresor tahunan" },
+    { interval: 12, label: "Ganti filter dryer & inspeksi pipa" }
+  ],
+  ahu: [
+    { interval: 1,  label: "Bersihkan filter G4 & cek pressure drop" },
+    { interval: 1,  label: "Cek belt, pulley & ketegangan" },
+    { interval: 1,  label: "Cek kondensat drain & aliran air coil" },
+    { interval: 3,  label: "Ganti filter G4" },
+    { interval: 3,  label: "Lubrikasi bearing motor kipas" },
+    { interval: 6,  label: "Ganti filter F7 (bag filter)" },
+    { interval: 6,  label: "Cek filter F9/HEPA & kalibrasi sensor" },
+    { interval: 12, label: "Ganti filter F9/HEPA" },
+    { interval: 12, label: "Overhaul motor kipas & inspeksi duct" }
+  ],
+  pw: [
+    { interval: 1,  label: "Cek tekanan, laju alir & kebocoran" },
+    { interval: 1,  label: "Uji konduktivitas & sanitasi loop" },
+    { interval: 3,  label: "Cek & ganti filter cartridge 5 micron" },
+    { interval: 3,  label: "Kalibrasi conductivity meter" },
+    { interval: 6,  label: "Sanitasi tangki & loop air" },
+    { interval: 6,  label: "Cek pompa sirkulasi" },
+    { interval: 12, label: "Overhaul pompa & kalibrasi menyeluruh" }
+  ],
+  wfi: [
+    { interval: 1,  label: "Cek suhu loop >= 80 C & konduktivitas" },
+    { interval: 1,  label: "Cek kebocoran uap & kondensat" },
+    { interval: 3,  label: "Cek unit distilasi & kalibrasi TOC" },
+    { interval: 3,  label: "Cek pompa resirkulasi" },
+    { interval: 6,  label: "Sanitasi sistem suhu tinggi" },
+    { interval: 6,  label: "Cek vent filter hidrofobik" },
+    { interval: 12, label: "Overhaul distiller & ganti vent filter" }
+  ],
+  boiler: [
+    { interval: 1,  label: "Cek level air & blowdown rutin" },
+    { interval: 1,  label: "Cek safety valve & tekanan steam" },
+    { interval: 3,  label: "Kuras sediment & kalibrasi safety valve" },
+    { interval: 3,  label: "Cek burner, ignitor & nozzle" },
+    { interval: 6,  label: "Inspeksi tabung (scale & korosi)" },
+    { interval: 6,  label: "Kalibrasi kontrol level air" },
+    { interval: 12, label: "Overhaul tahunan & uji hidrostatik" },
+    { interval: 12, label: "Inspeksi dalam boiler & ganti consumable" }
+  ]
+};
+
+function buildPmList(machine) {
+  return (PM_TASKS[machine.type] || []).map((t, i) => ({
+    id: "pm_" + t.interval + "_" + i,
+    interval: t.interval,
+    label: t.label
+  }));
+}
+
+function monthsToMs(m) { return m * 2592000000; }
+
+function pmState(machine) {
+  const all = store.get("pm", {});
+  return all[machine.id] || {};
+}
+
+function pmTaskInfo(machine, task) {
+  const st = pmState(machine)[task.id];
+  const state = { ...task, lastDone: st ? st.lastDone : null, by: st ? st.by : null, log: st && st.log ? st.log : [] };
+  if (!state.lastDone) {
+    state.nextDue = null;
+    state.status = "overdue";
+    state.daysLeft = null;
+  } else {
+    const next = new Date(new Date(state.lastDone).getTime() + monthsToMs(task.interval));
+    state.nextDue = next.toISOString();
+    state.daysLeft = Math.ceil((next.getTime() - Date.now()) / 86400000);
+    state.status = state.daysLeft < 0 ? "overdue" : (state.daysLeft <= 14 ? "due" : "ok");
+  }
+  return state;
+}
+
+function pmSummary() {
+  const all = { total: 0, overdue: 0, due: 0, ok: 0 };
+  MACHINES.forEach((m) => {
+    buildPmList(m).forEach((t) => {
+      const i = pmTaskInfo(m, t);
+      all.total++;
+      if (i.status === "overdue") all.overdue++;
+      else if (i.status === "due") all.due++;
+      else all.ok++;
+    });
+  });
+  return all;
+}
+
+function markPmDone(machine, task, by, note) {
+  const all = store.get("pm", {});
+  if (!all[machine.id]) all[machine.id] = {};
+  const st = all[machine.id][task.id] || { log: [] };
+  const iso = new Date().toISOString();
+  st.lastDone = iso;
+  st.by = by || "Tidak disebutkan";
+  st.log = st.log || [];
+  st.log.unshift({ ts: iso, by: st.by, note: note || "" });
+  if (st.log.length > 20) st.log = st.log.slice(0, 20);
+  all[machine.id][task.id] = st;
+  store.set("pm", all);
+}
+
+function seedPm() {
+  if (store.get("pm", null)) return;
+  const all = {};
+  MACHINES.forEach((m) => {
+    const rnd = seeded(hashStr("pm:" + m.id));
+    const by = "Petugas " + ((hashStr(m.id) % 10) + 1);
+    const st = {};
+    buildPmList(m).forEach((t) => {
+      const span = monthsToMs(t.interval);
+      const off = (rnd() * 60 - 30) * 86400000;
+      const last = new Date(Date.now() - (span - off));
+      const iso = last.toISOString();
+      st[t.id] = { lastDone: iso, by: by, log: [{ ts: iso, by: by, note: "Pencatatan awal (demo)" }] };
+    });
+    all[m.id] = st;
+  });
+  store.set("pm", all);
+}

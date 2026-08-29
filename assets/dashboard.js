@@ -19,6 +19,7 @@ function renderStats() {
   const ops = MACHINES.length - alerts - maint;
   const parts = allParts();
   const low = parts.filter(isLowStock).length;
+  const pm = pmSummary();
   const row = document.getElementById("statsRow");
   row.innerHTML =
     statCard("Total Mesin", MACHINES.length, "", "blue", "10 unit terdaftar") +
@@ -26,7 +27,9 @@ function renderStats() {
     statCard("Maintenance", maint, "", maint ? "blue" : "slate", "sedang perbaikan") +
     statCard("Alert", alerts, "", alerts ? "red" : "green", alerts ? "perlu tindakan" : "semua aman") +
     statCard("Total Stok", partTotalStock(), "pcs", "blue", parts.length + " item spare part") +
-    statCard("Low Stock", low, "", low ? "red" : "green", "stok di bawah minimum");
+    statCard("Low Stock", low, "", low ? "red" : "green", "stok di bawah minimum") +
+    statCard("Tugas PM", pm.total, "", "blue", "1 / 3 / 6 / 12 bulan") +
+    statCard("PM Overdue", pm.overdue, "", pm.overdue ? "red" : "green", "lewati jadwal");
 }
 
 function statCard(lbl, val, unit, cls, sub) {
@@ -165,7 +168,45 @@ function renderLowStock() {
     ).join("") + "</tbody>";
 }
 
+function renderPmDue() {
+  const tb = document.getElementById("tblPmDue");
+  const rows = [];
+  MACHINES.forEach((m) => {
+    buildPmList(m).forEach((t) => {
+      const info = pmTaskInfo(m, t);
+      if (info.status === "overdue" || info.status === "due") rows.push({ m, t, info });
+    });
+  });
+  rows.sort((a, b) => String(a.info.nextDue || "0").localeCompare(String(b.info.nextDue || "0")));
+  const shown = rows.slice(0, 8);
+  const th = "<thead><tr><th>Mesin</th><th>Interval</th><th>Tugas PM</th><th>Jatuh Tempo</th><th>Status</th></tr></thead>";
+  if (!shown.length) {
+    tb.innerHTML = th + '<tbody><tr><td colspan="5" class="empty">Tidak ada PM yang menunggak / jatuh tempo.</td></tr></tbody>';
+    return;
+  }
+  tb.innerHTML = th + "<tbody>" + shown.map((r) => {
+    const i = r.info;
+    const meta = i.status === "overdue" ? { label: "Overdue", cls: "alert" } : { label: "Jatuh Tempo", cls: "warning" };
+    const due = i.nextDue ? new Date(i.nextDue).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "Segera";
+    const daysTxt = i.daysLeft === null ? "" : (i.daysLeft < 0 ? "(" + Math.abs(i.daysLeft) + " hari lalu)" : "(" + i.daysLeft + " hari lagi)");
+    return (
+      "<tr" + (i.status === "overdue" ? " class='row-low'" : "") + ">" +
+      "<td><b>" + esc(r.m.name) + "</b></td>" +
+      "<td><span class='badge standby'>" + intervalLabelShort(i.t.interval) + "</span></td>" +
+      "<td>" + esc(r.t.label) + "</td>" +
+      "<td>" + due + " <span style='color:var(--muted);font-size:11px'>" + daysTxt + "</span></td>" +
+      '<td><span class="badge ' + meta.cls + '"><span class="dot"></span>' + meta.label + "</span></td></tr>"
+    );
+  }).join("") + "</tbody>";
+}
+
+function intervalLabelShort(iv) {
+  const f = (window.PM_INTERVALS || []).find((x) => x.val === iv);
+  return f ? f.shot : iv + " bln";
+}
+
 seedInspections();
+seedPm();
 
 function loadAll() {
   renderStats();
@@ -175,6 +216,7 @@ function loadAll() {
   renderPerfChart();
   renderSkemaTable();
   renderLowStock();
+  renderPmDue();
 }
 
 loadAll();
