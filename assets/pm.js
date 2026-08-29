@@ -4,6 +4,63 @@
 
 let activeInterval = null;
 let doneMachine = null, doneTask = null;
+let pmView = "matrix";
+
+function switchView(v) {
+  pmView = v;
+  document.querySelectorAll(".seg button").forEach((b) => b.classList.toggle("active", b.dataset.v === v));
+  document.getElementById("paneTable").style.display = v === "table" ? "" : "none";
+  document.getElementById("paneMatrix").style.display = v === "matrix" ? "" : "none";
+}
+
+function renderMatrix() {
+  const el = document.getElementById("paneMatrix");
+  if (!el) return;
+  el.innerHTML = MACHINES.map((m) => {
+    const cols = PM_INTERVALS.map((iv) => {
+      const rows = buildPmList(m).filter((t) => t.interval === iv.val).map((t) => ({ t, info: pmTaskInfo(m, t) }));
+      return { iv, rows };
+    });
+    const allInfo = cols.flatMap((c) => c.rows).map((x) => x.info);
+    const over = allInfo.filter((i) => i.status === "overdue").length;
+    const due = allInfo.filter((i) => i.status === "due").length;
+    return (
+      '<div class="card pm-card">' +
+      '<div class="pm-head">' +
+      '<div><span class="pm-name">' + esc(m.name) + '</span> <span style="color:var(--muted);font-size:12px">\u2022 ' + esc(m.location) + "</span></div>" +
+      '<div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">' +
+      (over ? '<span class="sum-tag tr">' + over + " Overdue</span>" : "") +
+      (due ? '<span class="sum-tag ab">' + due + " Jatuh tempo</span>" : "") +
+      '<span class="sum-tag ok">' + (allInfo.length - over - due) + " Terjadwal</span>" +
+      "</div></div>" +
+      '<div class="pm-grid">' +
+      cols.map((c) =>
+        '<div class="pm-col"><h4>' + esc(c.iv.label) + ' <span class="pm-col-count">' + c.rows.length + " tugas</span></h4>" +
+        (c.rows.length ? c.rows.map((x) => pmTaskHtml(m, x.t, x.info)).join("") : '<div class="empty">-</div>') +
+        "</div>"
+      ).join("") +
+      "</div></div>"
+    );
+  }).join("");
+}
+
+function pmTaskHtml(m, t, info) {
+  const meta = PM_STATUS_META[info.status];
+  const due = info.nextDue ? new Date(info.nextDue).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : "Segera";
+  const last = info.lastDone ? new Date(info.lastDone).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : "\u2014";
+  const daysTxt = info.daysLeft === null ? "" : (info.daysLeft < 0 ? "Telat " + Math.abs(info.daysLeft) + " hr" : info.daysLeft + " hr lagi");
+  return (
+    '<div class="pm-task">' +
+    '<div class="pt-label">' + esc(t.label) + "</div>" +
+    '<div class="pt-meta">Terakhir: ' + last + " &middot; Berikutnya: " + due + " " + daysTxt + "</div>" +
+    '<div class="pt-bottom">' +
+    '<span class="badge ' + meta.cls + '" style="font-size:10px;padding:2px 8px"><span class="dot"></span>' + meta.label + "</span>" +
+    '<div class="actions-row">' +
+    '<button class="btn sm" onclick="openDone(\'' + m.id + '\',\'' + t.id + '\')">Selesai</button>' +
+    '<button class="btn sm" onclick="openHist(\'' + m.id + '\',\'' + t.id + '\')">Riwayat</button>' +
+    "</div></div></div>"
+  );
+}
 
 function renderStats() {
   const s = pmSummary();
@@ -136,6 +193,7 @@ function confirmDone() {
   closeDone();
   renderStats();
   renderTable();
+  renderMatrix();
   toast("PM ditandai selesai. Jadwal berikutnya dihitung ulang.");
 }
 
@@ -161,3 +219,5 @@ seedPm();
 renderStats();
 renderFilters();
 renderTable();
+switchView(pmView);
+renderMatrix();

@@ -55,21 +55,32 @@
       <div style="height:8px"></div>
 
       <div class="card">
-        <h3><span class="accent-line"></span> Daftar Tugas PM</h3>
-        <div class="toolbar">
-          <input class="search" id="qSearch" placeholder="Cari tugas PM..." oninput="renderTable()" />
-          <select id="qMachine" onchange="renderTable()" style="max-width:200px"></select>
-          <select id="qStatus" onchange="renderTable()" style="max-width:200px">
-            <option value="">Semua Status</option>
-            <option value="overdue">Overdue</option>
-            <option value="due">Jatuh Tempo (&le; 14 hari)</option>
-            <option value="ok">Terjadwal</option>
-          </select>
+        <h3>
+          <span class="accent-line"></span> Daftar Tugas PM
+          <div class="seg">
+            <button data-v="matrix" class="active" onclick="switchView('matrix')">Jadwal Lengkap per Mesin</button>
+            <button data-v="table" onclick="switchView('table')">Tabel Terfilter</button>
+          </div>
+        </h3>
+
+        <div id="paneTable">
+          <div class="toolbar">
+            <input class="search" id="qSearch" placeholder="Cari tugas PM..." oninput="renderTable()" />
+            <select id="qMachine" onchange="renderTable()" style="max-width:200px"></select>
+            <select id="qStatus" onchange="renderTable()" style="max-width:200px">
+              <option value="">Semua Status</option>
+              <option value="overdue">Overdue</option>
+              <option value="due">Jatuh Tempo (&le; 14 hari)</option>
+              <option value="ok">Terjadwal</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="intervalChips"></div>
+          <div class="table-wrap">
+            <table id="tblPm"></table>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="intervalChips"></div>
-        <div class="table-wrap">
-          <table id="tblPm"></table>
-        </div>
+
+        <div id="paneMatrix"></div>
       </div>
     </main>
   </div>
