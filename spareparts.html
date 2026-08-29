@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manajemen Spare Parts</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">SM</div>
+        <div><b>MesinUp</b><small>Monitoring &amp; Sparepart</small></div>
+      </div>
+      <nav class="nav">
+        <a href="index.html">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          Dashboard
+        </a>
+        <a href="machines.html">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>
+          Mesin &amp; Grafik
+        </a>
+        <a href="spareparts.html" class="active">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 4.5 15 7a2 2 0 0 1 1 1.73v6.54a2 2 0 0 1-1 1.73l-5.5 2.5a2 2 0 0 1-1.79 0L4.2 16.99A2 2 0 0 1 3.2 15.26V8.73a2 2 0 0 1 1-1.73l3.5-1.74a2 2 0 0 1 1.8.01z"/><path d="M3.2 8.5 12 13l8.8-4.5"/><path d="M12 13v9"/></svg>
+          Spare Parts
+        </a>
+      </nav>
+      <div class="foot">
+        <b>Mode Demo</b><br />
+        Data disposable. Perubahan tersimpan di browser (localStorage) per perangkat.
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h1>Manajemen Spare Parts</h1>
+          <p>Inventaris suku cadang, stok, dan pemakaian mesin</p>
+        </div>
+        <div class="actions-row">
+          <button class="btn" onclick="exportParts()">Ekspor JSON</button>
+          <button class="btn" onclick="document.getElementById('fileImport').click()">Impor JSON</button>
+          <input type="file" id="fileImport" accept=".json" style="display:none" onchange="importParts(event)" />
+          <button class="btn primary" onclick="openPartModal()">+ Tambah Spare Part</button>
+        </div>
+      </div>
+
+      <div id="alertBanner"></div>
+
+      <div class="grid stats" id="statsRow"></div>
+
+      <div style="height:8px"></div>
+
+      <div class="card">
+        <h3><span class="accent-line"></span> Inventaris Spare Parts</h3>
+        <div class="toolbar">
+          <input class="search" id="qSearch" placeholder="Cari nama / kode / mesin..." oninput="renderParts()" />
+          <select id="qCat" onchange="renderParts()" style="max-width:220px">
+            <option value="">Semua Kategori</option>
+            <option value="__low">Hanya Low Stock</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table id="tblParts"></table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="overlay" id="ovl">
+    <div class="modal wide" id="partModal">
+      <h3 id="mTitle">Tambah Spare Part</h3>
+      <p class="modal-sub">Lengkapi informasi suku cadang di bawah.</p>
+      <div class="form-grid">
+        <div class="field"><label>Kode</label><input id="fKode" readonly /></div>
+        <div class="field"><label>Nama Spare Part *</label><input id="fNama" placeholder="cth: Bearing SKF 6304" /></div>
+        <div class="field"><label>Kategori</label><select id="fKategori"></select></div>
+        <div class="field"><label>Mesin Terkait</label><select id="fMesin"></select></div>
+        <div class="field"><label>Stok Saat Ini *</label><input id="fQty" type="number" min="0" /></div>
+        <div class="field"><label>Stok Minimum *</label><input id="fMin" type="number" min="0" /></div>
+        <div class="field"><label>Satuan</label><input id="fUnit" placeholder="pcs / liter / meter" /></div>
+        <div class="field"><label>Harga Satuan (Rp)</label><input id="fHarga" type="number" min="0" /></div>
+        <div class="field"><label>Lokasi Penyimpanan</label><input id="fLokasi" placeholder="cth: Rack A-1" /></div>
+        <div class="field"><label>Supplier</label><input id="fSupplier" placeholder="cth: PT Teknik Utama" /></div>
+        <div class="field span2"><label>Catatan</label><textarea id="fNote" rows="2" placeholder="Catatan opsional..."></textarea></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="closeModal()">Batal</button>
+        <button class="btn primary" onclick="savePart()">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovlAdjust">
+    <div class="modal">
+      <h3 id="adjTitle">Penyesuaian Stok</h3>
+      <p class="modal-sub" id="adjSub"></p>
+      <div class="field mg"><label>Jumlah Penyesuaian *</label>
+        <div style="display:flex;gap:10px">
+          <input id="adjQty" type="number" step="1" min="0" />
+          <select id="adjMode" style="max-width:180px">
+            <option value="in">+ Masuk (terima)</option>
+            <option value="out">- Keluar (pakai)</option>
+            <option value="set">= Set stok</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Catatan</label><textarea id="adjNote" rows="2" placeholder="cth: penerimaan PO #123, pemakaian preventive mainten. Chiller 2..."></textarea></div>
+      <div class="actions">
+        <button class="btn" onclick="closeAdj()">Batal</button>
+        <button class="btn primary" onclick="applyAdjust()">Terapkan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="assets/app.js"></script>
+  <script src="assets/spareparts-store.js"></script>
+  <script src="assets/spareparts.js"></script>
+</body>
+</html>
